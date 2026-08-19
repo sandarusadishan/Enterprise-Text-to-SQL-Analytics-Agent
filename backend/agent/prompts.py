@@ -33,4 +33,6 @@ Data Output:
 {data_df}
 
 Provide a concise, 2-bullet-point summary highlighting key business insights from this data.
+CRITICAL INSTRUCTION:
+- If there are monetary values, always use LKR (Sri Lankan Rupee, formatted as 'Rs.' or 'LKR') as the currency. Do NOT use other currency symbols (such as $, ₹, €, etc.).
 """

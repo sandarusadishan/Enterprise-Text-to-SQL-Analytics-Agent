@@ -1,6 +1,14 @@
 import re
+import sys
 import pandas as pd
 import plotly.express as px
+
+# Force standard output to UTF-8 to prevent charmap UnicodeEncodeError on Windows
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8')
+
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from database.connection import get_db_connection
@@ -11,9 +19,9 @@ from .prompts import SQL_GENERATION_PROMPT, SQL_FIX_PROMPT, ANALYTICS_PROMPT
 # Load environment variables
 load_dotenv()
 
-# Initialize the Groq Llama model for Agent actions
+# Initialize the Groq model for Agent actions
 llm = ChatGroq(
-    model="llama-3.3-70b-versatile",
+    model="groq/compound",
     temperature=0
 )
 
@@ -37,7 +45,13 @@ def generate_sql_node(state: AgentState) -> AgentState:
     print(f"\n🧠 [Node 1: Generate SQL] Question: '{state['question']}'")
     schema = get_db_schema()
     
-    prompt = SQL_GENERATION_PROMPT.format(schema=schema, question=state['question'])
+    # Prepend history context if present
+    history_str = state.get("history", "")
+    question_with_context = state['question']
+    if history_str:
+        question_with_context = f"Conversation History:\n{history_str}\n\nUser's Current Question: {state['question']}"
+        
+    prompt = SQL_GENERATION_PROMPT.format(schema=schema, question=question_with_context)
     response = llm.invoke(prompt)
     raw_sql = get_content_text(response.content).strip()
     
@@ -95,11 +109,16 @@ def fix_sql_node(state: AgentState) -> AgentState:
     print(f"🔄 [Node 3: Self-Correction] Fixing SQL Error: {state['error_message']}")
     schema = get_db_schema()
     
+    history_str = state.get("history", "")
+    question_with_context = state['question']
+    if history_str:
+        question_with_context = f"Conversation History:\n{history_str}\n\nUser's Current Question: {state['question']}"
+        
     prompt = SQL_FIX_PROMPT.format(
         schema=schema,
         sql_query=state['sql_query'],
         error_message=state['error_message'],
-        question=state['question']
+        question=question_with_context
     )
     response = llm.invoke(prompt)
     fixed_sql = re.sub(r'```sql|```', '', get_content_text(response.content).strip()).strip()

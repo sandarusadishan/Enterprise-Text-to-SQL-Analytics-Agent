@@ -9,3 +9,4 @@ class AgentState(TypedDict):
     retry_count: int
     insights: Optional[str]
     chart_json: Optional[Any]
+    history: Optional[str]
